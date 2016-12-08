@@ -1,0 +1,44 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+
+\usepackage{minted}
+\newminted{py}{%
+%		linenos,
+		fontsize=\footnotesize,
+		tabsize=2,
+		mathescape,
+}
+\newminted{text}{%
+%		linenos,
+		fontsize=\footnotesize,
+		tabsize=2,
+		mathescape,
+}
+
+\title{Laboratory report 3}
+\author{Rodrigo Arias Mallo}
+
+\begin{document}
+\maketitle
+
+\section*{Introduction}
+{\sl In this third session we are going to slightly complicate our example of 
+assigning tasks to computers in a data center.
+
+In this case, we will assume that computers consist of a number of cores, 
+whereas tasks consist of a number of threads. Each task must be assigned to a 
+single computer, and threads must be assigned to a single core provided that it
+has enough capacity.}
+
+\section*{Tasks}
+\paragraph*{A}
+{\sl Implement the P3 model in OPL and solve it using CPLEX with the following 
+data file.}
+%
+Using pulp the data could be transformed directly into the program.
+
+\end{document}
