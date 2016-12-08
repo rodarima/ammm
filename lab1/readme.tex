@@ -1,0 +1,390 @@
+\documentclass[11pt,a4paper,twocolumn]{article}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+
+\usepackage{minted}
+\newminted{py}{%
+%		linenos,
+		fontsize=\footnotesize,
+		tabsize=2,
+		mathescape,
+}
+
+\title{Laboratory report 1}
+\author{Rodrigo Arias Mallo}
+
+\begin{document}
+\maketitle
+
+\section*{Introduction}
+\textsl{The problem is about assigning a set of tasks (processes) to a set of
+computers in a data center.}
+
+So we have some set of tasks $T = \{t_1, t_2, \ldots, t_N\}$, and some set of
+computers $C = \{c_1, c_2, \ldots, c_M\}$.
+
+In addition, each tast $t_i$ requests some amount of processing resources. Let
+$RT_i$ be the amount of resources need by the task $i$.
+
+Also, each computer $c_j$ has \textbf{one} CPU, with a processing capacity. Let
+$RC_j$ be the processing capacity of the computer $j$.
+
+\textsl{Since the power consumption of the computers increases heavily with the
+load, the objective consists in distributing the tasks among all the computers
+so to minimize the load of the computer running at the highest load.}
+
+Let $L_j$ be the load and $P_j$ be the power consumption of the computer $c_j$.
+Then, there is an asumption that if $L_j = \alpha$ and $P_j = \beta$, then for a
+positive $\epsilon$, if the load is now $L_j = \alpha + \epsilon$ implies more power
+consumption, $P_j > \beta$.
+
+Also, the load of a computer, means that the processor does real work by a
+fraction of the amount of work capable of doing, so $L_j \le 1$
+
+So if $L_{max} = \max_{j} L_j$ is the highest load, we should reduce it. That
+could be expressed as an objective function $\min(z) = \min(L_{max})$.
+
+But be aware, could be a misconception here. Suposse two computers $c_1$ and 
+$c_2$, both with the same processing resources $RC_1 = RC_2$. If the computer 
+$c_1$ consumes linearly with the load, say $P_1 = K \cdot L_1$, and another 
+computer, less eficient, $c_2$ consumes five times more with the load, $P_2 = 5K 
+\cdot L_2$.  Then, reducing the load of the highest loaded computer to the 
+minimum does not always reduce the overall power consumption to the minimum.  
+Which could be useful.
+
+Let $L_1 = 1/2$ and $L_2 = 1/2$, then all the power computer power consumption 
+is $\sum_j P_j = K \cdot L_1 + 5K \cdot L_2 = 1/2 K + 5/2K = 3K$. And the 
+highest load is at the minimum (1/2) for both computers. But, using only the 
+eficient computer at $L_1 = 1$ and $L_2 = 0$, only consumes $\sum_j P_j = K 
+\cdot L_1 = K$, three times less.
+
+% TODO: Measure diference.
+Reducing the highest load does not imply reducing the power consumption.
+
+\subsection*{Problem statement}
+
+\sl
+The problem can be formally stated as follows. Given:
+\begin{itemize}
+\item The set $T$ of tasks. For each task $t_i$ the amount of processing 
+resources requested $RT_i$ is specified.
+\item The set $C$ of computers. For each computer $c_j$ the available processing 
+capacity $RC_j$ is specified.
+\end{itemize}
+Find the assignment of tasks to computers subject to the following constraints: 
+\begin{itemize}
+\item Each task is assigned to some computers so that the entire requested 
+processing load is served. Note that this means that a single task can consume 
+processing capacity of several computers.
+\item The processing capacity of each computer cannot be exceeded.  with the 
+objective to minimize the load of the highest loaded computer.
+\end{itemize}
+
+\subsection*{LP formulation}
+The P1 problem can be modeled as a Linear Program. To this end, the following 
+sets and parameters are defined:
+%
+\begin{center}
+\begin{tabular}{l l}
+$T$    & Set of $t_i$ tasks. \\
+$C$    & Set of $c_j$ computers.\\
+$RT_i$ & Resources requested by task $t_i$.\\
+$RC_j$ & Available capacity of computer $c_j$.
+\end{tabular}
+\end{center}
+%
+The following decision variables are also defined:
+\begin{center}
+\begin{tabular}{p{.1\linewidth} p{.8\linewidth}}
+$x_{ij}$ & Positive real with the percentage of resources requested by task 
+$t_i$ that are served from computer $c_j$.\\
+%
+$z$ & Positive real with the load of the highest loaded computer.
+\end{tabular}
+\end{center}
+%
+The load $L_j$ of the computer $c_j$ can be expressed in terms of the sum of 
+each contribution from the task $t_i$. The contribution is computed as the 
+resource requested by the task $t_i$ times the fraction running on computer 
+$c_j$, being $RT_i \cdot x_{ij}$. So the load $L_j$ is just the sum of all 
+resources requested over the total resources of the computer $c_j$, $L_j = 
+\frac{1}{RC_j} \sum_i RT_i \cdot x_{ij}$.
+
+Note that the variable z stores the load of the highest loaded computer, that 
+is:
+%
+\begin{equation}
+  z = \max_j L_j
+  = \max_j \left\{ \frac{1}{RC_j} \sum_{i}{RT_i \cdot x_{ij}} \right\}
+\end{equation}
+%
+Finally, the LP model for the P1 problem is as follows:
+
+\noindent
+\begin{minipage}{\columnwidth}
+\begin{align}
+\text{Minimize } & z\\
+\text{Subject to}& \nonumber \\
+& \sum_j x_{ij} = 1 \\
+& \sum_i RT_i \cdot x_{ij} \le RC_j \\
+& z \ge \frac{1}{RC_j} \sum_{j}{RT_i \cdot x_{ij}}
+\end{align}
+With $1 \le i \le N$ and $1 \le j \le M$.
+%\end{equation}
+\end{minipage}
+\rm
+
+\section*{Tasks}
+\paragraph*{A}
+\textsl{Explain the P1 model in eq. 2 to 5. Specifically, define each of the
+constraints.}
+
+The eq.~2 just states that the load of the maximum loaded computer should be 
+minimized.
+
+The eq.~3 ensures that for each task $t_i$, all the portion of the task is fully 
+distributed on the computers. So the sum of each fraction of resources for all 
+the computers for the task $t_j$, should be 1, to complete the task.
+
+The eq.~4 prevents for a computer $c_j$, being requested more resources than it 
+can process, $RC_j$. So the sum of all the fraction of resources requested by 
+the tasks, should not be greater than the capacity of the computer $c_j$.
+
+Finally, the last eq. 5, is a tricky one. The $z$ variable is being minimized, 
+so forces the right hand side to be smaller. And that corresponds to the load of 
+the computer $c_j$ as said before. So the $z$ acts as a barrier trying to reduce 
+the load the computer $c_j$. When a computer with load $L_j$ has the maximum 
+load $L_{max}$, then all the other inequations automatically holds. So the 
+solver will try to reduce the load of tho computer $c_j$, so reducing always the 
+maximum load $L_{max}$.
+
+\paragraph*{B}
+\textsl{Explain how equation 1 is implemented in the model P1. Specifically, why 
+z is guaranteed to be equal to the load of the highest loaded computer?}
+
+The eq. 1 just computes the load of the computer $c_j$, called $L_j$ based on 
+the sum of all fraction of resources from all the tasks, assigned to the 
+computer $c_j$. And divides the sum over the total computing resource available, 
+to get the load.
+
+Then, from all the loads $L_j$, the maximum load is selected, $L_{max}$. The 
+selection of the maximun load is implemented as a constraint, in the eq. 5. The 
+solver tries to minimize $z$, and the maximum load is the first which resists 
+the reduction of $z$.
+
+The value of $z$ will be the maximum load $L_{max}$, because if it were greater, 
+then it could be minimized until the value of $L_{max}$. And cannot be less, 
+because the eq. 5.
+
+\paragraph*{C}
+\textsl{Implement the P1 model in OPL following the steps in section 3 and solve 
+it using CPLEX.}
+
+As I don't have the software in my own machine, I will use another method. I 
+will be using the GLPK toolkit as a solver, and implement the problem in python 
+using pulp. In this way, another solver could be choosen in other workstations, 
+using CPLEX when available.
+
+The semantics are quite similar, so it shall be easy to follow. The model 
+proposed should have the data and the model of the problem in different files.  
+To load the data, just two lines are enough.
+%
+\begin{pycode}
+rt = [261.27, 560.89, 310.51, 105.80]
+rc = [505.67, 503.68, 701.78]
+\end{pycode}
+%
+Then the ranges are computed, based on the length of $RT$ and $RC$
+%
+\begin{pycode}
+T = range(len(rt))
+C = range(len(rc))
+\end{pycode}
+%
+For the other part of the problem, the variables \texttt{x} and \texttt{z} are 
+created first, corresponding with $x_{ij}$ and $z$.
+%
+\begin{pycode}
+x = []
+for t in T:
+	x_t = []
+	for c in C:
+		x_name = "x_{}_{}".format(t,c)
+		x_tc = LpVariable(
+			x_name,
+			0,
+			1,
+			LpContinuous)
+		x_t.append(x_tc)
+	x.append(x_t)
+
+z = LpVariable("z", 0, 1, LpContinuous)
+\end{pycode}
+%
+To continue with, the contraints.
+
+\begin{pycode}
+# The problem
+prob = LpProblem("problem", LpMinimize)
+
+# Constraint 1
+for t in T:
+	prob +=
+		lpSum(
+			[x[t][c] for c in C]) == 1.00
+
+# Constraint 2
+for c in C:
+	prob +=
+		lpSum(
+			[rt[t] * x[t][c] for t in T]) <= rc[c]
+
+# Constraint 3
+for c in C:
+	prob +=
+		z >= (1.0 / rc[c]) * lpSum(
+			[rt[t] * x[t][c] for t in T])
+
+# Objective function
+prob += z
+\end{pycode}
+%
+And now, just solve the problem, using the solver of choice, in this case is 
+GLPK.
+\begin{pycode}
+status = prob.solve(GLPK(msg=1))
+print("Solver status: {}".format(
+	LpStatus[status]))
+\end{pycode}
+%
+Finally, print the total load.
+%
+\begin{pycode}
+total_load = sum(rt)
+print("Total load: {}".format(total_load))
+\end{pycode}
+And the load for each computer.
+\begin{pycode}
+for c in C:
+	load = 0
+	for t in T:
+		load +=
+			rt[t] * value(x[t][c])
+	load = (1/rc[c]) * load
+	print("CPU{} loaded at {:.3f}"
+		.format(c, load))
+\end{pycode}
+After running the program \texttt{lab1-a.py}, an optimal solution is reached.
+\begin{pycode}
+python lab1-a.py
+Solver status: Optimal
+Total load: 1238.47
+Total capacity: 1711.13
+CPU0 loaded at 0.724
+CPU1 loaded at 0.724
+CPU2 loaded at 0.724
+\end{pycode}
+
+\paragraph*{D}
+\textsl{Write a processing block to check whether the load requested by all the 
+tasks can be served by the computers.}
+
+The resources needed for the tasks are the sum of each, $RT_{all} = \sum_i 
+RT_i$.  And for the available resources, $RC_{all} = \sum_i RC_i$. If $RT_{all} 
+> RC_{all}$, then there cannot be distributed with all loads $L_j \le 1$. So 
+checking for enough resources is done as follows.
+\begin{pycode}
+if sum(rt) > sum(rc):
+	print("Not enough computer resources")
+	exit(1)
+\end{pycode}
+
+\paragraph*{E}
+\textsl{Implement the P1 model in OPL following the steps in section 4 and solve 
+it using CPLEX.}
+
+The key here is to be able to modify the data, without dealing with the model.  
+So now, instead of write the data in the program, it will be loaded from a 
+external source, a json file. As an example, the provided data.
+\begin{pycode}
+{
+	"rc": [505.67, 503.68, 701.78],
+	"rt": [261.27, 560.89, 310.51, 105.8]
+}
+\end{pycode}
+%
+Now, to load the data from a file, just adding some lines instead of the data, 
+gives.
+%
+\begin{pycode}
+data = json.load(sys.stdin)
+rc = data['rc']
+rt = data['rt']
+\end{pycode}
+%
+And it can be tested with different data files.
+%
+\begin{pycode}
+python lab1-b.py < data.json
+Solver status: Optimal
+Total load: 1238.47
+Total capacity: 1711.13
+CPU0 loaded at 0.724
+CPU1 loaded at 0.724
+CPU2 loaded at 0.724
+
+python lab1-b.py < data-bad.json
+Not enough computer resources
+\end{pycode}
+%
+Even with all the data files. 
+%
+\begin{pycode}
+find -name "data*.json" -print \
+	-exec sh -c "python lab1-b.py < {}" \;
+
+./data-bad.json
+Not enough computer resources
+./data.json
+Solver status: Optimal
+Total load: 1238.47
+Total capacity: 1711.13
+CPU0 loaded at 0.724
+CPU1 loaded at 0.724
+CPU2 loaded at 0.724
+...
+\end{pycode}
+
+\paragraph*{F}
+\textsl{Analyze the computer's processing capacity and indicate whether is 
+possible to reduce it.}
+
+The total resource capacity of all the computers, is 1711.13, which is greater 
+than the required by the tasks, 1238.47. So instead of using three computers 
+with capacities [505.67, 503.68, 701.78], two computers of 701.78 could be used.  
+Or another computer with less capacity [505.67, 503.68, 300.00], giving
+
+\begin{pycode}
+python lab1-b.py < data-less.json 
+Solver status: Optimal
+Total load: 1238.47
+Total capacity: 1309.35
+CPU0 loaded at 0.946
+CPU1 loaded at 0.946
+CPU2 loaded at 0.946
+\end{pycode}
+
+\section*{Requirements}
+I have ran all the examples in my own machine, running an UNIX system. The 
+version of python used was 3.5.2. The version of pulp was 1.6.1. And of GLPK was 
+4.60.
+
+More info of how to install pulp and GLPK can be found in 
+\url{https://pythonhosted.org/PuLP/} and 
+\url{https://www.gnu.org/software/glpk/}
+
+\end{document}
+
