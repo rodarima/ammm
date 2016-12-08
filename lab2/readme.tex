@@ -1,0 +1,477 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+
+\usepackage{minted}
+\newminted{py}{%
+%		linenos,
+		fontsize=\footnotesize,
+		tabsize=2,
+		mathescape,
+}
+\newminted{text}{%
+%		linenos,
+		fontsize=\footnotesize,
+		tabsize=2,
+		mathescape,
+}
+
+\title{Laboratory report 2}
+\author{Rodrigo Arias Mallo}
+
+\begin{document}
+\maketitle
+
+\section*{Introduction}
+\textsl{In this second session we are going to continue with our example of 
+assigning tasks to computers in a datacenter.}
+
+\section*{Problem statement}
+{\sl
+
+The P2 problem can be formally stated as follows. Given:
+\begin{itemize}
+\item The set T of tasks. For each task t the amount of resources requested rt 
+is specified.
+\item The set C of computers. For each computer c the available capacity rc is 
+specified.
+\end{itemize}
+%
+Find the assignment of tasks to computers subject to the following constraints:
+\begin{itemize}
+\item Each task is assigned to exactly one computer.
+\item The capacity of each computer cannot be exceeded.
+\end{itemize}
+%
+With the objective to minimize the highest loaded computer. 
+
+}%end of \sl group
+%
+\section*{Tasks}
+\quote{{\sl Note:} The name of each problem is composed of $PXY$, were $X=2$ 
+because this is the second lab session, and $Y$ is the letter of the 
+correspending exercise.  This naming convention allows me to automatically save 
+each run log in a different file.}
+\paragraph*{A}
+{\sl Implement the P2 model (as problem P2a) in OPL and solve it using CPLEX.  
+Use ``boolean'' to define binary variables in OPL.}
+
+As before, I'm going to use pulp and the solver GLPK. Using the previous 
+definition of the problem, in report 1, the code is the same. Just a change in 
+the variable $x$ from real to binary.
+
+The previous definition
+\begin{pycode}
+x_tc = LpVariable("x_{}_{}".format(t,c),
+	0, 1, LpContinuous)
+\end{pycode}
+now becomes
+\begin{pycode}
+x_tc = LpVariable("x_{}_{}".format(t,c),
+	0, 1, LpBinary)
+\end{pycode}
+And the model just runs as before.
+\begin{textcode}
+% python P2a.py < data.json
+Solver status: Optimal
+Total load: 1238.47
+Total capacity: 1711.13
+CPU0 loaded at 0.614
+CPU1 loaded at 0.729
+CPU2 loaded at 0.799
+\end{textcode}
+%
+\paragraph*{B}
+{\sl Compare P1 and P2a in terms of the value of the optimal solution, solving 
+algorithm, solving time, and number of variables and constraints.}
+
+The two different logs are stored in {\sl P1-pulp.log} and {\sl P2a-pulp.log}.
+
+In the problem P1, only real numbers were used, it is a pure linear problem.  So 
+the solver used by default the simplex algorithm, which has first a stage of 
+presolving where some preprocessing was done (but with no change).
+%
+\begin{textcode}
+10 rows, 13 columns, 39 non-zeros
+Preprocessing...
+10 rows, 13 columns, 39 non-zeros
+\end{textcode}
+%
+Then a scaling process tries to apply a linear transformation to the constraints 
+in order to improve its stability. Finally, the simplex algorithm runs with the 
+primal variant.
+%
+\begin{textcode}
+Constructing initial basis...
+Size of triangular part is 10
+      0: obj =   0.000000000e+00 inf =   6.224e+00 (3)
+      5: obj =   7.237731791e-01 inf =   0.000e+00 (0)
+OPTIMAL LP SOLUTION FOUND
+\end{textcode}
+%
+The first number in each row tell us the number of iterations, so in 5 
+iterations an optimal solution is found.
+
+In the problem P2a, there are both integer (binary) variables and real ones. So 
+it is a mixed integer (linear) program (MIP). The solver decides to use first 
+the simplex algorithm treating all variables as real ones.
+%
+\begin{textcode}
+Solving LP relaxation...
+GLPK Simplex Optimizer, v4.60
+8 rows, 8 columns, 23 non-zeros
+      0: obj =   7.992390778e-01 inf =   1.771e+00 (2)
+      1: obj =   7.992390778e-01 inf =   4.441e-16 (0)
+OPTIMAL LP SOLUTION FOUND
+\end{textcode}
+%
+Then switches to the integer solver and continues from the result of the linear 
+solver. The algorithm used is set by default as branch and cut using heuristic 
+by Driebeck and Tomlin.
+%
+\begin{textcode}
+Integer optimization begins...
++     1: mip =     not found yet >=              -inf        (1; 0)
++     1: >>>>>   7.992390778e-01 >=   7.992390778e-01   0.0% (1; 0)
++     1: mip =   7.992390778e-01 >=     tree is empty   0.0% (0; 1)
+INTEGER OPTIMAL SOLUTION FOUND
+\end{textcode}
+%
+The time is in both cases less than 50 ms, so its rounded to 0.0s.
+\begin{textcode}
+Time used:   0.0 secs
+\end{textcode}
+And the memory is a bit more in the second problem than in the first.
+\begin{textcode}
+Memory used: 0.0 Mb (39701 bytes)
+Memory used: 0.1 Mb (52816 bytes)
+\end{textcode}
+The number of constraints is in both cases 10, as can be seen in the formulation 
+of the problem in {\sl P1-pulp.lp} and {\sl P2a-pulp.lp}. Pulp insert a {\tt 
+\_Cxx} tag into each contraint, with {\tt x} being a number. So, searching for 
+the contraints lines and counting them gives.
+\begin{textcode}
+% cat P1-pulp.lp | grep '_C[0-9]*' | wc -l
+10
+% cat P2a-pulp.lp | grep '_C[0-9]*' | wc -l
+10
+\end{textcode}
+A result of 10 constraints as expected. However, after the preprocessing step, 
+in the second problem the number of constraints needed were reduced to 8 (8 
+rows).
+%
+\begin{textcode}
+10 rows, 13 columns, 39 non-zeros
+12 integer variables, all of which are binary
+Preprocessing...
+6 constraint coefficient(s) were reduced
+8 rows, 8 columns, 23 non-zeros
+7 integer variables, all of which are binary
+\end{textcode}
+%
+The number of variables is at the start of both problems 13 (13 columns).
+\begin{textcode}
+10 rows, 13 columns, 39 non-zeros
+\end{textcode}
+But after the preprocessing step, the second problem ends with only 8 columns, 
+so just 8 variables, 7 of them are binary.
+
+The solution has the same optimum value of the objective function, with both 
+resources used of $1238.47$. However the distribution of tasks is not the same 
+anymore.
+%
+For the P1 problem, the distribution of tasks is as follows
+\begin{textcode}
+% python P1.py < data.json
+...
+100.00% of task 0 runs on computer 2
+ 65.25% of task 1 runs on computer 0
+ 34.75% of task 1 runs on computer 2
+ 83.33% of task 2 runs on computer 1
+ 16.67% of task 2 runs on computer 2
+100.00% of task 3 runs on computer 1
+\end{textcode}
+%
+But in the P2a
+\begin{textcode}
+% python P2a.py < data.json
+...
+100.00% of task 0 runs on computer 1
+100.00% of task 1 runs on computer 2
+100.00% of task 2 runs on computer 0
+100.00% of task 3 runs on computer 1
+\end{textcode}
+
+
+%
+\paragraph*{C}
+{\sl Solve a new problem P2c with the following data file, where a new task has 
+been added. Analyze the obtained results.}
+%
+\begin{textcode}
+nTasks=5;
+nCPUs=3;
+
+rt=[261.27 560.89 310.51 105.80 344.7];
+rc=[505.67 503.68 701.78];
+\end{textcode}
+%
+First, we need the data to be in {\sl json} format to be able to read it with 
+python.
+\begin{textcode}
+% cat data-p2.json
+{
+        "rc": [505.67, 503.68, 701.78],
+        "rt": [261.27, 560.89, 310.51, 105.8, 344.7]
+}
+\end{textcode}
+%
+Then execute the program with the new data file.
+%
+\begin{textcode}
+% python P2c.py < data-p2.json
+Solver status: Infeasible
+Total load: 1583.17
+Total capacity: 1711.13
+CPU0 loaded at 0.000
+CPU1 loaded at 0.000
+CPU2 loaded at 0.000
+\end{textcode}
+%
+It seems now that the problem becomes unfeasible. The total resources needed by 
+all the tasks are $1583.17$ and the total resources available are $1711.13$.  
+However there is no distribution of tasks in the computers, without splitting 
+any task in different computers, that can be found. So there is no solution for 
+this problem.
+%
+
+\paragraph*{D}
+{\sl Modify the P2 model to allow rejecting tasks, i.e. some tasks might not be 
+processed. To this aim, consider a new parameter K defining the maximum number 
+of tasks that can be rejected (P2d). Analyze the obtained results varying the 
+value of K.}
+
+First the model was previously defined, with $z$
+\begin{equation}
+  z = \max_j L_j
+  = \max_j \left\{ \frac{1}{RC_j} \sum_{i}{RT_i \cdot x_{ij}} \right\}
+\end{equation}
+And the model
+\begin{align}
+\text{Minimize}   \quad & z\\
+\text{Subject to} \quad & \sum_j x_{ij} = 1 \label{eq:c1_old}\\
+& \sum_i RT_i \cdot x_{ij} \le RC_j \\
+& z \ge \frac{1}{RC_j} \sum_{j}{RT_i \cdot x_{ij}}
+\end{align}
+With $1 \le i \le N$ and $1 \le j \le M$.
+
+Let $Y = \{y_1, y_2,\ldots,y_n \}$ be a set of $N$ new $y_i$ binary variables, 
+with $N$ being the number of tasks and $1 \le i \le N$. If a task $t_i$, is 
+accepted, $y_i = 1$, otherwise it is rejected and $y_i = 0$. 
+
+Then the number of rejected variables becomes $R = N - \sum_i y_i$. To add the 
+restriction of the maximum number of rejected variables, a new constraint can be 
+formulated.
+\begin{align}
+%\setcounter{equation}{5}
+R &\le K \nonumber \\
+N - \sum_i y_i &\le K \nonumber \\
+\sum_i y_i &\ge N - K
+\end{align}
+%
+Also the equation~\eqref{eq:c1_old} now should be changed, because some tasks 
+can be rejected, making the sum $\sum_j x_{ij}$ equal to 0 for those tasks 
+rejected.  So, as $y_i = 0$ when the task $t_i$ is rejected, and 1 otherwise, 
+can be rewritten as
+\begin{equation}
+\sum_j x_{ij} = y_i
+\end{equation}
+Giving the new model
+\begin{align}
+\text{Minimize}   \quad & z\\
+\text{Subject to} \quad & \sum_j x_{ij} = y_i \\
+& \sum_i RT_i \cdot x_{ij} \le RC_j \\
+& z \ge \frac{1}{RC_j} \sum_{j}{RT_i \cdot x_{ij}} \le z\\
+& \sum_i y_i \le N - K
+\end{align}
+With $1 \le i \le N$ and $1 \le j \le M$.
+
+The model in the python program {\sl P2d.py} follows the formal description
+\begin{pycode}
+# The problem
+prob = LpProblem(problem, LpMinimize)
+
+# Constraint 1
+for t in T:
+	prob += lpSum([x[t][c] for c in C]) == y[t]
+
+# Constraint 2
+for c in C:
+	prob += lpSum([rt[t] * x[t][c] for t in T]) <= rc[c]
+
+# Constraint 3
+for c in C:
+	prob += z >= (1.0 / rc[c]) * lpSum([rt[t] * x[t][c] for t in T])
+
+# Contraint 4
+prob += lpSum([y[t] for t in T]) >= N - K
+
+
+# Objective function
+prob += z
+\end{pycode}
+%
+The result of the execution, with $0 \le K \le 3$.
+\begin{textcode}
+% for K in 0 1 2 3; do echo "K=$K"; python P2d.py $K < data-p2.json; done
+K=0
+Solver status: Infeasible
+Resources used were 0.00 of 1711.13 available
+There were 5 of 5 tasks rejected with a total of 1583.17 resources
+A total of 1711.13 resources were unused. K=0
+Task 0 with 261.27 of resources was rejected
+Task 1 with 560.89 of resources was rejected
+Task 2 with 310.51 of resources was rejected
+Task 3 with 105.80 of resources was rejected
+Task 4 with 344.70 of resources was rejected
+K=1
+Solver status: Optimal
+Resources used were 1022.28 of 1711.13 available
+There were 1 of 5 tasks rejected with a total of 560.89 resources
+A total of 688.85 resources were unused. K=1
+Task 0 with 261.27 of resources runs on computer 1
+Task 1 with 560.89 of resources was rejected
+Task 2 with 310.51 of resources runs on computer 0
+Task 3 with 105.8 of resources runs on computer 2
+Task 4 with 344.7 of resources runs on computer 2
+K=2
+Solver status: Optimal
+Resources used were 677.58 of 1711.13 available
+There were 2 of 5 tasks rejected with a total of 905.59 resources
+A total of 1033.55 resources were unused. K=2
+Task 0 with 261.27 of resources runs on computer 0
+Task 1 with 560.89 of resources was rejected
+Task 2 with 310.51 of resources runs on computer 2
+Task 3 with 105.8 of resources runs on computer 1
+Task 4 with 344.70 of resources was rejected
+K=3
+Solver status: Optimal
+Resources used were 367.07 of 1711.13 available
+There were 3 of 5 tasks rejected with a total of 1216.10 resources
+A total of 1344.06 resources were unused. K=3
+Task 0 with 261.27 of resources runs on computer 2
+Task 1 with 560.89 of resources was rejected
+Task 2 with 310.51 of resources was rejected
+Task 3 with 105.8 of resources runs on computer 1
+Task 4 with 344.70 of resources was rejected
+\end{textcode}
+%
+As a result of increasing $K$ the number of rejected tasks also increases. The 
+objective function is defined to minimize the load of the highest load computer.  
+So allowing more rejected tasks, the model just keeps the minimum number of task 
+in the computers, minimizing the load. It can be observed that the task with the 
+greatest resource demand is the next rejected when increasing $K$.
+
+\paragraph*{E}
+{\sl Modify the objective function so as to minimize the amount of not served 
+load (P2e)}
+
+The not served load, can be described in terms of the unused load of all the 
+computers, $U$. Let $U_j$ be the unused load of the computer $c_j$.  Then
+%
+$$ U_j = \frac{RC_j - \sum_i RT_i \cdot x_{ij}}{RC_j} =
+1 - \frac{1}{RC_j} \sum_i RT_i \cdot x_{ij}$$
+%
+And as $U = \sum_j U_j$
+%
+$$U = \sum_j \left( 1 - \frac{1}{RC_j} \sum_i RT_i \cdot x_{ij} \right) =
+M - \sum_j \left( \frac{1}{RC_j} \sum_i RT_i \cdot x_{ij} \right)
+$$
+%
+With this definition of $U$, the model can now be written without $z$, modifying 
+the previous constraint
+%
+\begin{align}
+\text{Minimize}   \quad & U\\
+\text{Subject to} \quad & \sum_j x_{ij} = y_i \\
+& \sum_i RT_i \cdot x_{ij} \le RC_j \\
+%& U = \sum_j \left( RC_j -  \sum_i RT_i \cdot x_{ij} \right)\\
+& U = M - \sum_j \left( \frac{1}{RC_j} \sum_i RT_i \cdot x_{ij} \right) \\
+& \sum_i y_i \le N - K
+\end{align}
+With $1 \le i \le N$ and $1 \le j \le M$.
+
+The new model now becomes
+%
+\begin{pycode}
+# The problem
+prob = LpProblem(problem, LpMinimize)
+
+# Constraint 1
+for t in T:
+	prob += lpSum([x[t][c] for c in C]) == y[t]
+
+# Constraint 2
+for c in C:
+	prob += lpSum([rt[t] * x[t][c] for t in T]) <= rc[c]
+
+# Constraint 3
+prob += U == M - lpSum([1/rc[c] * lpSum(
+	[rt[t] * x[t][c] for t in T]) for c in C])
+
+# Constraint 4
+prob += lpSum([y[t] for t in T]) >= N - K
+
+# Objective function
+prob += U
+\end{pycode}
+%
+Using any $K>0$, the result of the execution is always the same
+%
+\begin{textcode}
+% python P2e.py 1 < data-p2.json
+Solver status: Optimal
+Resources used were 1321.90 of 1711.13 available
+There were 1 of 5 tasks rejected with a total of 261.27 resources
+A total of 389.23 resources were unused. K=1
+Task 0 with 261.27 of resources was rejected
+Task 1 with 560.89 of resources runs on computer 2
+Task 2 with 310.51 of resources runs on computer 0
+Task 3 with 105.8 of resources runs on computer 1
+Task 4 with 344.7 of resources runs on computer 1
+\end{textcode}
+%
+The rejected task is now the task 0 instead of the task 1. The load of the 
+computers is now
+\begin{textcode}
+Computer 0 loaded at 61.41%
+Computer 1 loaded at 89.44%
+Computer 2 loaded at 79.92%
+\end{textcode}
+Compared with the previous problem P2d, with $K=1$
+\begin{textcode}
+Computer 0 loaded at 61.41%
+Computer 1 loaded at 51.87%
+Computer 2 loaded at 64.19%
+\end{textcode}
+There is now a better load usage.
+
+\paragraph*{F}
+{\sl Compare all three models (P2a, P2d, P2e) in terms of number of variables, 
+constraints and execution time.}
+
+Asuming that the three models to compare are P2a, P2d and P2e. The number of 
+variables and constraints are shown in parenthesis after the preprocessing step.
+
+\begin{tabular}{l l l l l}
+Model & Variables & Constraints & Time (s) & Memory (bytes)\\
+P2a & 13 (8) & 10 (8) & 0.0 & 52816\\
+P2d & 21 (19) & 12 (12) & 0.0 & 61859\\
+P2e & 21 (18) & 10 (10) & 0.0 & 58866\\
+\end{tabular}
+
+
+\end{document}
