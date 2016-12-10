@@ -1,0 +1,22 @@
+/*********************************************
+ * OPL 12.4 Data
+ * Author: oliveras
+ * Creation Date: Jan 7, 2014 at 10:52:48 AM
+ *********************************************/
+
+ bigM = 100000; // might be useful for some constraints
+ 
+ userLocs = 10;
+ accessPoints = 5;
+ 
+ f = 100; // fixed cost
+ c = 20; // additional cost
+ k = 7; // capacity
+ d = 3; // distance
+ 
+ cr = [ 2 3 4 1 2 2 1 2 3 4 ]; // capacity required by each user
+ 
+ // Only needed for B)
+ posUsers = [ [1 1] [2 3] [0 1] [4 1] [1 2] [2 2] [0 1] [1 1] [3 4] [2 4] ];
+ posAccessPoints = [ [2 3] [1 2] [1 1] [0 2] [1 3] ];
+ 

@@ -1,0 +1,240 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+
+\usepackage{minted}
+\newminted{py}{%
+%		linenos,
+		fontsize=\footnotesize,
+		tabsize=2,
+		mathescape,
+}
+\newminted{text}{%
+%		linenos,
+		fontsize=\footnotesize,
+		tabsize=2,
+		mathescape,
+}
+
+\newcommand*\mat[1]{ \begin{pmatrix} #1 \end{pmatrix}}
+\newcommand*\arr[1]{ \begin{bmatrix} #1 \end{bmatrix}}
+
+\title{Exam January 13th 2014}
+\author{Rodrigo Arias Mallo}
+
+\begin{document}
+\maketitle
+
+\section*{Exercise 1}
+
+{\sl A set of users $U$ need to be connected to the Internet. For that purpose, 
+we have available a set of access points $A$ where we could install several 
+routers (at most one per access point). We want to find out in which access 
+points we should install a router and to which access point each user should be 
+connected to, in order to minimize cost and satisfy other constraints that are 
+defined in the following.}
+
+\subsection*{A}
+
+{\sl Let us first assume that we can only install one type of router. The cost 
+of installing such a router in an access point has two components: a fixed cost 
+$f$, and an additional cost $c$ for each user that is connected to it. Such a 
+router has a given capacity $k$ and we know, for each user $u \in U$, the amount 
+$cr_u$ of capacity units it consumes from the router it is connected to.
+
+Write down an integer linear program to find out in which access points we 
+should install a router and which access point each user should be connected to 
+in order to minimize cost and not to exceed the capacity of each router.  
+Additionally, create an OPL project to solve this problem. Problem data will be 
+found in the file {\tt examA.dat}. Use the file initialModel.mod as the initial 
+model and complete it.  Save this file as {\tt modelA.mod} and send it through 
+``El Racó''.}
+
+\paragraph*{Model}
+
+An access point is a place where a router can be installed, or can be empty.  
+Some quantities like $f$ or $c$ are fixed, but others like the position of each 
+router can vary as we evaluate different solutions. To prevent any confusion, 
+lets rename the fixed quatities using a greek symbol.
+%
+$$ \alpha = f,\, \beta = c $$
+%
+Also the vector $cr$ is renamed to just $R$ to prevent any confusion with the 
+matrix product.
+%
+To determine whether or not a router should be placed at an access point, the 
+column vector $P \in \{0,1\}^{1 \times A}$ where $P_a$ is 1 if a router is 
+placed at $a$, or 0 otherwise.
+%An example of $P$ for 5 access points with 3 routers.
+%
+%$$ P^T = \mat{1 & 0 & 1 & 1 & 0} $$
+%
+Lets define a matrix $C \in \{0,1\}^{U \times A}$ so the element $C_{ua}$ is 1 
+if the user $u$ is connected to the router at the access point $a$, and 0 
+otherwise.
+%An example of C for 4 users and 5 access points with 3 routers.
+%%
+%$$ C = \mat{
+%	1 & 0 & 0 & 0 & 0 \\
+%	1 & 0 & 0 & 0 & 0 \\
+%	0 & 0 & 1 & 0 & 0 \\
+%	0 & 0 & 0 & 1 & 0 \\
+%} $$
+%%
+The cost of a router $M_a$ at $a$ can be rewritten as
+%
+$$ M_a = \alpha P_a + \beta \sum_{u \in U} C_{ua} $$
+%
+Also a vector with all the costs of the routers in the access points $M \in 
+\mathbb{R}^{A}$, where $M_a$ is the cost of the router at $a$, is defined as
+%
+$$ M = \alpha P + \beta C^T \bf{1} $$
+%
+%As an example, using the previous matrices,
+%
+%\begin{equation*}
+%\begin{split}
+%M=\alpha P + \beta C^T \mathbf{1}
+%&= \alpha \mat{1 \\ 0 \\ 1 \\ 1 \\ 0} + \beta
+%\mat{
+%	1 & 1 & 0 & 0 \\
+%	0 & 0 & 0 & 0 \\
+%	0 & 0 & 1 & 0 \\
+%	0 & 0 & 0 & 1 \\
+%	0 & 0 & 0 & 0 \\
+%} \mat{1 \\ 1 \\ 1 \\ 1}
+%\\
+%& = \alpha \mat{1 \\ 0 \\ 1 \\ 1 \\ 0} + \beta \mat{2 \\ 0 \\ 1 \\ 1 \\ 0} \\
+%& = \mat{\alpha + 2 \beta \\ 0 \\ \alpha + \beta \\ \alpha + \beta \\ 0}
+%\end{split}
+%\end{equation*}
+%%
+The objective function is to minimize the total cost, $\min(\sum M)$.
+There are some constraints. The resources consumed by each user, $R_u$, cannot 
+exceed those provided by each router.
+%
+$$ RC \le k P^T $$
+%
+Each user should be connected to one router.
+%
+$$ C \bf{1} = \bf{1} $$
+%
+The final optimization model is:
+%
+\begin{align}
+\text{Minimize} \quad & \sum M\\
+\text{Subject to}	\quad & M = \alpha P + \beta C^T \bf{1} \\
+& RC \le k P^T \\
+& C \bf{1} = \bf{1}
+\end{align}
+
+\paragraph*{Implementation}
+Lets build a python program using pulp to solve this model. First we notice that 
+the data in {\tt examA.dat} is written in a unusual format, that cannot be 
+parsed by python easily. There is a script provided in {\tt AMMMLabHeuristics 
+v1.1.zip} called {\tt DATParser.py} which reads {\tt .dat} files into a 
+dictionary. Hopefully the script is licensed using the GPLv3 so there is a 
+chance to reuse for this ocassion.
+
+The script is based on python 2, but can be updated to the 3 using the handy 
+tool {\tt 2to3}. After some adjustments, a json file can be generated based on 
+the dat files.
+%
+\begin{textcode}
+% python dat2json.py data/*.dat
+% cat data/examA.json | fold -s
+{"c": 20, "accessPoints": 5, "k": 7, "posUsers": [[1, 1], [2, 3], [0, 1], [4, 
+1], [1, 2], [2, 2], [0, 1], [1, 1], [3, 4], [2, 4]], "f": 100, 
+"posAccessPoints": [[2, 3], [1, 2], [1, 1], [0, 2], [1, 3]], "d": 3, "bigM": 
+100000, "cr": [2, 3, 4, 1, 2, 2, 1, 2, 3, 4], "userLocs": 10}
+\end{textcode}
+%
+Now the data can be loaded in python using a json decoder. First, some constants 
+should be loaded:
+
+\begin{pycode}
+data = json.load(sys.stdin)
+
+ALPHA = data['f']
+BETA = data['c']
+K = data['k']
+R = data['cr']
+N_AP = data['accessPoints']
+
+U = range(0, len(R))
+A = range(0, N_AP)
+\end{pycode}
+%
+Then, the variables are defined.
+%
+\begin{pycode}
+# The vector P, where a 1 states a router in that position
+P = vector_var(A, 'P', 0, 1, LpBinary)
+
+# The matrix C, so C_ua is 1 if the user u is connected to the router at a.
+C = matrix_var(U, A, 'C', 0, 1, LpBinary)
+
+# The cost of the router at the access point a
+M = vector_var(A, "M", 0, kind=LpContinuous)
+\end{pycode}
+%
+To continue with the constraints.
+%
+\begin{pycode}
+# The problem
+prob = LpProblem(problem, LpMinimize)
+
+# Constraint 1
+for a in A:
+	prob += M[a] == ALPHA * P[a] + BETA * lpSum([C[u][a] for u in U])
+
+# Constraint 2
+for a in A:
+	prob += lpSum([R[u] * C[u][a] for u in U]) <= K * P[a]
+
+# Constraint 3
+for u in U:
+	prob += lpSum([C[u][a] for a in A]) == 1
+
+# Objective function
+prob += lpSum([M[a] for a in A])
+\end{pycode}
+%
+Finally, after the execution an optimal solution is found, with an amount of 600 
+for the minimization function.
+%
+\begin{textcode}
+% python 1a.py < data/examA.json
+Solver status: Optimal
+Cost: sum(M) = 600.0
+Matrix C:
+  0  1  0  0  0
+  0  0  0  1  0
+  0  0  1  0  0
+  1  0  0  0  0
+  0  0  1  0  0
+  0  1  0  0  0
+  1  0  0  0  0
+  1  0  0  0  0
+  0  1  0  0  0
+  0  0  0  1  0
+Vector M:
+  160.0  160.0  140.0  140.0  0.0
+Vector P:
+  1  1  1  1  0
+Vector R:
+  2  3  4  1  2  2  1  2  3  4
+Router at 0 used 4/7 by users [3, 6, 7]
+Router at 1 used 7/7 by users [0, 5, 8]
+Router at 2 used 6/7 by users [2, 4]
+Router at 3 used 7/7 by users [1, 9]
+\end{textcode}
+
+
+
+
+
+\end{document}
