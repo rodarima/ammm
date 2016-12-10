@@ -1,12 +1,13 @@
 #!/bin/bash
 
 FILE=$1
-TEX=${FILE}.tex
-PDF=${FILE}.pdf
+TEX=${FILE%.*}.tex
+PDF=${FILE%.*}.pdf
 TEX_FLAGS="-shell-escape -interaction=nonstopmode -halt-on-error"
 
 
 while [ 1 ]; do
+	sleep 2
 	# Files to look can change
 	FILES=$(cat "$TEX" |\
 		grep -o '\\input{.*}' |\
