@@ -39,19 +39,19 @@ defined in the following.}
 
 \subsection*{A}
 
-{\sl Let us first assume that we can only install one type of router. The cost 
-of installing such a router in an access point has two components: a fixed cost 
-$f$, and an additional cost $c$ for each user that is connected to it. Such a 
-router has a given capacity $k$ and we know, for each user $u \in U$, the amount 
-$cr_u$ of capacity units it consumes from the router it is connected to.
+\textsl{Let us first assume that we can only install one type of router. The 
+cost of installing such a router in an access point has two components: a fixed 
+cost $f$, and an additional cost $c$ for each user that is connected to it. Such 
+a router has a given capacity $k$ and we know, for each user $u \in U$, the 
+amount $cr_u$ of capacity units it consumes from the router it is connected to.}
 
-Write down an integer linear program to find out in which access points we 
-should install a router and which access point each user should be connected to 
-in order to minimize cost and not to exceed the capacity of each router.  
+\textsl{Write down an integer linear program to find out in which access points 
+we should install a router and which access point each user should be connected 
+to in order to minimize cost and not to exceed the capacity of each router.  
 Additionally, create an OPL project to solve this problem. Problem data will be 
-found in the file {\tt examA.dat}. Use the file initialModel.mod as the initial 
-model and complete it.  Save this file as {\tt modelA.mod} and send it through 
-``El Racó''.}
+found in the file \texttt{examA.dat}. Use the file initialModel.mod as the 
+initial model and complete it.  Save this file as \texttt{modelA.mod} and send 
+it through ``El Racó''.}
 
 \paragraph*{Model}
 
@@ -89,7 +89,8 @@ The cost of a router $M_a$ at $a$ can be rewritten as
 $$ M_a = \alpha P_a + \beta \sum_{u \in U} C_{ua} $$
 %
 Also a vector with all the costs of the routers in the access points $M \in 
-\mathbb{R}^{A}$, where $M_a$ is the cost of the router at $a$, is defined as
+\mathbb{R}^{1 \times A}$, where $M_a$ is the cost of the router at $a$, is 
+defined as
 %
 $$ M = \alpha P + \beta C^T \bf{1} $$
 %
@@ -125,7 +126,7 @@ $$ C \bf{1} = \bf{1} $$
 The final optimization model is:
 %
 \begin{align}
-\text{Minimize} \quad & \sum M\\
+\text{Minimize} \quad & \sum M \nonumber \\
 \text{Subject to}	\quad & M = \alpha P + \beta C^T \bf{1} \\
 & RC \le k P^T \\
 & C \bf{1} = \bf{1}
@@ -140,8 +141,8 @@ dictionary. Hopefully the script is licensed using the GPLv3 so there is a
 chance to reuse for this ocassion.
 
 The script is based on python 2, but can be updated to the 3 using the handy 
-tool {\tt 2to3}. After some adjustments, a json file can be generated based on 
-the dat files.
+tool {\tt 2to3}. After some adjustments, a {\tt .json} file can be generated 
+based on the {\tt .dat} files.
 %
 \begin{textcode}
 % python dat2json.py data/*.dat
@@ -233,8 +234,102 @@ Router at 2 used 6/7 by users [2, 4]
 Router at 3 used 7/7 by users [1, 9]
 \end{textcode}
 
+\subsection*{B}
+\textsl{Assume that we have one additional requirement: routers can only be 
+connected to users that are at distance at most $d$. To implement this 
+constraint we know, for each user $u \in U$, its location $(u_x, u_y)$ and for 
+each access point $a \in A$, its location $(a_x, a_y)$. Write down the 
+mathematical formulation and extend the OPL model. Save this file as 
+\texttt{modelB.mod} and send it through ``El Racó''. Use \texttt{modelA.mod} 
+again as problem data.}
 
+\paragraph*{Model}
 
+To add the notion of distance, lets define the distance between a user $u$ and 
+the access point $a$ as the matrix $Z \in \mathbb{R}^{U \times A}$ defined as
+%
+$$ Z_{ua} = \sqrt{(a_x - u_x)^2 + (a_y - u_y)^2} $$
+%
+To restrict the distance less than $d$, a new contraint should be added
+%
+$$ C_u^T Z_u \le d $$
+%
+Leading the new model
+%
+\begin{align}
+\text{Minimize} \quad & \sum M \nonumber\\
+\text{Subject to}	 \setcounter{equation}{0} \quad & M = \alpha P + \beta C^T 
+\bf{1} \\
+& RC \le k P^T \\
+& C \bf{1} = \bf{1} \\
+& C_u^T Z_u \le d
+\end{align}
+
+\paragraph*{Implementation}
+
+The matrix $Z$ is first precomputed based on the users positions $V$, and the 
+access point positions $W$.
+%
+\begin{pycode}
+def dist(a, b):
+	return math.sqrt((a[0] - b[0])**2 + (a[1] - b[1])**2)
+
+# Precompute a table with all the possible distances
+Z = []
+for u in U:
+	Zu = []
+	for a in A:
+		Zu.append(dist(V[u], W[a]))
+	Z.append(Zu)
+\end{pycode}
+%
+The new constraint is added to the model:
+%
+\begin{pycode}
+# Constraint 4
+for u in U:
+	prob += lpSum([C[u][a] * Z[u][a] for a in A]) <= D
+\end{pycode}
+%
+After the execution, the new results have the same cost, but a different layout.
+%
+\begin{textcode}
+% python 1b.py < data/examA.json
+Solver status: Optimal
+Cost: sum(M) = 600.0
+Matrix C:
+  0  1  0  0  0
+  1  0  0  0  0
+  0  0  1  0  0
+  0  0  1  0  0
+  0  0  0  0  1
+  0  0  0  0  1
+  0  0  0  0  1
+  0  0  0  0  1
+  0  1  0  0  0
+  1  0  0  0  0
+Vector M:
+  140.0  140.0  140.0  0.0  180.0
+Vector P:
+  1  1  1  0  1
+Vector R:
+  2  3  4  1  2  2  1  2  3  4
+Matrix Z:
+  2.24  1.00  0.00  1.41  2.00
+  0.00  1.41  2.24  2.24  1.00
+  2.83  1.41  1.00  1.00  2.24
+  2.83  3.16  3.00  4.12  3.61
+  1.41  0.00  1.00  1.00  1.00
+  1.00  1.00  1.41  2.00  1.41
+  2.83  1.41  1.00  1.00  2.24
+  2.24  1.00  0.00  1.41  2.00
+  1.41  2.83  3.61  3.61  2.24
+  1.00  2.24  3.16  2.83  1.41
+Router at 0 used 7/7 by users [1, 9] at distances [0.00, 1.00]
+Router at 1 used 5/7 by users [0, 8] at distances [1.00, 2.83]
+Router at 2 used 5/7 by users [2, 3] at distances [1.00, 3.00]
+Router at 4 used 7/7 by users [4, 5, 6, 7] at distances [1.00, 1.41, 2.24, 2.00]
+\end{textcode}
 
 
 \end{document}
